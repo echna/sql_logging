@@ -6,7 +6,7 @@ import pyodbc
 
 def logged(funct_version="0.0.0"):
     """
-        logging wrapper for simplest logging if a function
+        logging wrapper for simplest logging of a function
         creates entry in log table : "log_funct_" + funct.__name__ with the function's arguments as log_detail
         updates the log entry after completion of function with status=100 and log_detail of function's arguments and ouput of the function
 
