@@ -55,9 +55,8 @@ class Log():
             *execute the things described in the log*
 
             my_log.update(log_status=100, log_detail='Same detail as above apended with any relevant information from the run app.')
-
-
     """
+
     _log_sv       = None
     _log_db       = None
     _log_tb       = None
@@ -157,16 +156,26 @@ class Log():
     def _update_qy(self):
         """ Create the SQL query to update a log entry  """
 
-        time = strftime("%Y-%m-%d %H:%M:%S", gmtime())
+        format_dict = {
+            'db_dbo_tb' : sql_db_dbo_tb(self._log_db, self._log_tb),
+            'status'    : self._log_status,
+            'time'      : strftime("%Y-%m-%d %H:%M:%S", gmtime()),
+            'id'        : self._log_id,
+            'detail'    : self._log_detail
+        }
 
-        qy =  "Update " + sql_db_dbo_tb(self._log_db, self._log_tb)
-        qy += "  set status = " + self._log_status
-        qy += ", time_end = '" + time + "'"
-        qy += ", time_elapsed = ( SELECT DATEDIFF(SECOND, '19000101', CAST('" + time
-        qy += "' as DATETIME) - CAST([time_start] as DATETIME )) FROM [" + self._log_db + "].[dbo].[" + self._log_tb + "] "
-        qy += " where id = '" + self._log_id + "')"
-        qy += ", detail = '" + self._log_detail + "'"
-        qy += " where id = '" + self._log_id  + "'"
+        qy = """
+            Update {db_dbo_tb} 
+                set status = {status},
+                    time_end = '{time}',
+                    time_elapsed = ( SELECT 
+                        DATEDIFF(SECOND, '19000101', CAST('{time}' as DATETIME) - CAST([time_start] as DATETIME )) 
+                        FROM {db_dbo_tb}
+                        WHERE id = '{id}'
+                    ),
+                    detail = '{detail}'
+                WHERE id = '{id}'
+            """.format(**format_dict)
 
         return qy
 
@@ -176,10 +185,8 @@ class Log():
         return pyodbc.connect('DRIVER={SQL Server};SERVER=' + self._log_sv + ';UID=SA;PWD=Pa__w0rd;')
 
 
-
     def _create_log_tb(self):
         """ Create the log table if it doesn't exist already  """
-
         with self._conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(self._create_log_tb_qy())
@@ -189,15 +196,21 @@ class Log():
     def _create_log_tb_qy(self):
         """ Create the SQL query to create a log table if it doesn't exist already  """
 
+        format_dict = {
+            'db' : self._log_db,
+            'tb' : self._log_tb,
+            'db_dbo_tb' : sql_db_dbo_tb(self._log_db, self._log_tb)
+        }
+
         qy = """
             IF (NOT EXISTS (
                 SELECT *
-                    FROM """ + self._log_db +  """.INFORMATION_SCHEMA.TABLES
+                    FROM {db}.INFORMATION_SCHEMA.TABLES
                     WHERE TABLE_SCHEMA = 'dbo'
-                    AND  TABLE_NAME = '""" + self._log_tb + """'))
+                    AND  TABLE_NAME = '{tb}'))
             BEGIN
 
-            create table """ + sql_db_dbo_tb(self._log_db, self._log_tb) + """
+            create table {db_dbo_tb}
             (
                 ID	            int IDENTITY(1,1),
                 status	        int,
@@ -212,15 +225,19 @@ class Log():
                 detail	        nvarchar(MAX),
             )
             END
-        """
+        """.format(**format_dict)
 
         return qy
 
     def _create_log_db(self):
+        """Create the log database if it doesn't already exist"""
         with self._conn() as conn:
+            conn.autocommit = True
             with conn.cursor() as cur:
-                cur.execute("If DB_ID(N'" + self._log_db + "') IS NULL BEGIN; CREATE DATABASE " + self._log_db + "; END;")
-                cur.commit()
+                cur.execute(self._create_log_db_qy())
+
+    def _create_log_db_qy(self):
+        return("If DB_ID(N'{db}') IS NULL BEGIN; CREATE DATABASE [{db}]; END;".format(db=self._log_db))
 
 
 def str_none_to_null(string):
@@ -229,7 +246,8 @@ def str_none_to_null(string):
     return "'" + str(string) + "'"
 
 def sql_db_dbo_tb(db, tb):
-    return("[" + db +  "].[dbo].[" + tb + "]")
+    return("[{database}].[dbo].[{table}]".format(database=db, table=tb))
+
 
 if __name__ == '__main__':
     print("Creating log")
@@ -246,4 +264,9 @@ if __name__ == '__main__':
     )
     print("Created log")
 
+    @logged()
+    def minus(a,b):
+        return(a-b)
+
+    minus(5,2)
 

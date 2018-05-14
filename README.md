@@ -6,6 +6,12 @@ Python Class to allow simple logging of processes in SQL server
 
 ## Usage
 
+At the moment the logging is configure for running with a local mssql docker image which happens to run on 192.168.99.100:
+
+```shell
+docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=Pa__w0rd" -p 1433:1433 --name sql1 -d microsoft/mssql-server-linux:latest
+```
+
 The package contains three main features:
 
     1. Log() class
