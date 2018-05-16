@@ -10,8 +10,6 @@ class SignalHandler:
     """
         The object that will handle signals and stop the periodic logging threads.
     """
-
-    #: The pool of worker threads
     periodic_log = None
 
     def __init__(self, periodic_log):
@@ -26,7 +24,6 @@ class SignalHandler:
         self.periodic_log.stop()
 
 
-
 class PeriodicLog(logging.Log):
     """
         Class whose objects create an entry in a log table and updates it at an interval
@@ -36,17 +33,16 @@ class PeriodicLog(logging.Log):
         :param: log_detail -- string to cover all possible detail of what is being logged, preferably in JSON format.
         :param: period -- int period of log updates in seconds
     """
-
     _stopper = None
-    _period  = None
-    thread   = None
+    _period = None
+    thread = None
 
     def __init__(self, app_name, app_version, log_tb, log_detail, period):
         print("---PeriodicLog--- Process saving first log entry.")
         super().__init__(app_name, app_version, log_tb, log_detail)
-        self._period  = period
+        self._period = period
         self._stopper = threading.Event()
-        self.thread   = threading.Thread(target=self.update_periodic, args=())
+        self.thread = threading.Thread(target=self.update_periodic, args=())
         self.thread.start()
 
         handler = SignalHandler(self)
@@ -77,4 +73,3 @@ class PeriodicLog(logging.Log):
         log_detail = self._log_detail + " Process was shut down by user."
         self.update(100, log_detail)
         sys.exit(0)
-
